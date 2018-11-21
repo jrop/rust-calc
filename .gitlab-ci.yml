@@ -1,0 +1,4 @@
+image: rustlang/rust:nightly-slim
+test:
+  script:
+    - cargo test
