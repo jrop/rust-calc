@@ -1,5 +1,7 @@
 # rust-calc
 
+[![pipeline status](https://gitlab.com/jrop/rust-calc/badges/master/pipeline.svg)](https://gitlab.com/jrop/rust-calc/commits/master)
+
 A simple calculator CLI, written in Rust.
 
 ## Building
