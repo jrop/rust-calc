@@ -1,20 +1,26 @@
 #![feature(nll)]
+use std::io::Write;
 
 mod ast;
 mod lexer;
 mod pratt;
 
-use lexer::lex;
-use pratt::Pratt;
+fn prompt_and_read_line() -> std::io::Result<String> {
+    let mut line: String = String::new();
+    print!("> ");
+    std::io::stdout().flush()?;
+    std::io::stdin().read_line(&mut line)?;
+    Ok(line)
+}
 
 fn main() {
-    let source = "1+2*3^2^1".to_owned();
-    let tkns = lex(&source);
-
-    let mut tkns_iter = tkns.iter().peekable();
-    let mut parser = Pratt::new(&mut tkns_iter);
-    let parse_result = parser.expr(0);
-    if let Ok(node) = parse_result {
-        println!("result={:?}", ast::eval(node));
+    while let Ok(line) = prompt_and_read_line() {
+        let tkns = lexer::lex(&line);
+        let mut tkns_iter = tkns.iter().peekable();
+        let mut parser = pratt::Pratt::new(&mut tkns_iter);
+        match parser.expr(0) {
+            Ok(node) => println!("result={:?}", ast::eval(node)),
+            Err(reason) => println!("Error: {:?}", reason),
+        }
     }
 }
