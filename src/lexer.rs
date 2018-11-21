@@ -1,4 +1,4 @@
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     Number(f64),
     Plus,
@@ -81,4 +81,36 @@ pub fn lex(s: &String) -> Vec<Token> {
         }
     }
     tkns
+}
+
+#[cfg(test)]
+mod tests {
+    use lexer::{lex, Token};
+
+    #[test]
+    fn numbers() {
+        let tkns = lex(&"2 3.14".to_owned());
+        assert_eq!(tkns.len(), 2);
+        assert_eq!(tkns[0], Token::Number(2_f64));
+        assert_eq!(tkns[1], Token::Number(3.14_f64));
+    }
+
+    #[test]
+    fn operators() {
+        let tkns = lex(&"+-*/^()".to_owned());
+        assert_eq!(tkns.len(), 7);
+        assert_eq!(tkns[0], Token::Plus);
+        assert_eq!(tkns[1], Token::Minus);
+        assert_eq!(tkns[2], Token::Times);
+        assert_eq!(tkns[3], Token::Divide);
+        assert_eq!(tkns[4], Token::Exponent);
+        assert_eq!(tkns[5], Token::LParen);
+        assert_eq!(tkns[6], Token::RParen);
+    }
+
+    #[test]
+    fn eof() {
+        let tkns = lex(&"".to_owned());
+        assert_eq!(tkns.len(), 0);
+    }
 }

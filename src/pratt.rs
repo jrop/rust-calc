@@ -83,3 +83,94 @@ impl<'a> Pratt<'a> {
         Ok(left)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ast::Node;
+    use lexer::{lex, Token};
+    use pratt::Pratt;
+
+    #[test]
+    fn number() {
+        let tkns = lex(&"1".to_owned());
+        let mut tkns_iter = tkns.iter().peekable();
+        let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
+        assert_eq!(ast, Node::Number(1_f64));
+    }
+
+    #[test]
+    fn plus_times() {
+        let tkns = lex(&"1+2*3".to_owned());
+        let mut tkns_iter = tkns.iter().peekable();
+        let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
+        assert_eq!(
+            ast,
+            Node::Binary(
+                Box::new(Node::Number(1_f64)),
+                Token::Plus,
+                Box::new(Node::Binary(
+                    Box::new(Node::Number(2_f64)),
+                    Token::Times,
+                    Box::new(Node::Number(3_f64))
+                ))
+            )
+        );
+    }
+
+    #[test]
+    fn times_plus() {
+        let tkns = lex(&"1*2+3".to_owned());
+        let mut tkns_iter = tkns.iter().peekable();
+        let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
+        assert_eq!(
+            ast,
+            Node::Binary(
+                Box::new(Node::Binary(
+                    Box::new(Node::Number(1_f64)),
+                    Token::Times,
+                    Box::new(Node::Number(2_f64))
+                )),
+                Token::Plus,
+                Box::new(Node::Number(3_f64)),
+            )
+        );
+    }
+
+    #[test]
+    fn parens() {
+        let tkns = lex(&"1*(2+3)".to_owned());
+        let mut tkns_iter = tkns.iter().peekable();
+        let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
+        assert_eq!(
+            ast,
+            Node::Binary(
+                Box::new(Node::Number(1_f64)),
+                Token::Times,
+                Box::new(Node::Binary(
+                    Box::new(Node::Number(2_f64)),
+                    Token::Plus,
+                    Box::new(Node::Number(3_f64)),
+                )),
+            )
+        );
+    }
+
+    #[test]
+    fn rassoc() {
+        let tkns = lex(&"1^2^3".to_owned());
+        let mut tkns_iter = tkns.iter().peekable();
+        let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
+        assert_eq!(
+            ast,
+            Node::Binary(
+                Box::new(Node::Number(1_f64)),
+                Token::Exponent,
+                Box::new(Node::Binary(
+                    Box::new(Node::Number(2_f64)),
+                    Token::Exponent,
+                    Box::new(Node::Number(3_f64)),
+                )),
+            )
+        );
+    }
+}
