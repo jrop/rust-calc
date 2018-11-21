@@ -1,10 +1,10 @@
 use lexer::Token;
 
 #[derive(Debug, PartialEq)]
-pub enum Node<'a> {
+pub enum Node {
     Number(f64),
-    Unary(&'a Token, Box<Node<'a>>),
-    Binary(Box<Node<'a>>, Token, Box<Node<'a>>),
+    Unary(Token, Box<Node>),
+    Binary(Box<Node>, Token, Box<Node>),
 }
 
 pub fn eval(node: Node) -> f64 {
@@ -40,8 +40,7 @@ mod tests {
     #[test]
     fn unary() {
         let num = Box::new(Node::Number(3.14_f64));
-        let minus = Token::Minus;
-        assert_eq!(ast::eval(Node::Unary(&minus, num)), -3.14_f64);
+        assert_eq!(ast::eval(Node::Unary(Token::Minus, num)), -3.14_f64);
     }
 
     #[test]

@@ -22,12 +22,12 @@ impl<'a> Pratt<'a> {
         }
     }
 
-    pub fn nud(&mut self, t: &'a Token, _bp: usize) -> Result<Node<'a>, String> {
+    pub fn nud(&mut self, t: &Token, _bp: usize) -> Result<Node, String> {
         match t {
             Token::Number(n) => Ok(Node::Number(*n)),
             Token::Plus | Token::Minus => {
                 let right = self.expr(0)?;
-                Ok(Node::Unary(t, Box::new(right)))
+                Ok(Node::Unary(t.clone(), Box::new(right)))
             }
             Token::LParen => {
                 let right = self.expr(0)?;
@@ -40,7 +40,7 @@ impl<'a> Pratt<'a> {
         }
     }
 
-    pub fn led(&mut self, left: Node<'a>, op: &Token, bp: usize) -> Result<Node<'a>, String> {
+    pub fn led(&mut self, left: Node, op: &Token, bp: usize) -> Result<Node, String> {
         match op {
             Token::Plus | Token::Minus | Token::Times | Token::Divide => {
                 let right = self.expr(bp)?;
@@ -62,7 +62,7 @@ impl<'a> Pratt<'a> {
         let peeked = self.tokens.peek();
         peeked.is_none()
     }
-    pub fn expr(&mut self, rbp: usize) -> Result<Node<'a>, String> {
+    pub fn expr(&mut self, rbp: usize) -> Result<Node, String> {
         let err = "Undexpected EOF";
         let mut t = self.tokens.next().ok_or(err)?;
 
