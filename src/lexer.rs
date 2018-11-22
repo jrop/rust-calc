@@ -1,4 +1,4 @@
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Token {
     Number(f64),
     Plus,
@@ -10,75 +10,131 @@ pub enum Token {
     RParen,
 }
 
-fn eat_digits_as_f64(chars: &mut std::iter::Peekable<std::str::Chars>) -> Option<f64> {
-    let n = chars.next()?;
-    let mut number = n.to_string().parse::<f64>().unwrap();
-    let mut peek = chars.peek().cloned();
-    while let Some(c) = peek {
-        if !c.is_digit(10) {
-            break;
+pub struct Lexer<'a> {
+    position: usize,
+    chars: std::iter::Peekable<std::iter::Enumerate<std::str::Chars<'a>>>,
+}
+impl<'a> Lexer<'a> {
+    pub fn new(source: &'a str) -> Lexer<'a> {
+        Lexer {
+            position: 0,
+            chars: source.chars().enumerate().peekable(),
         }
-        chars.next();
-        let digit_value = c.to_string().parse::<f64>().unwrap();
-        number = number * 10f64 + digit_value;
-
-        peek = chars.peek().cloned();
     }
-    Some(number)
+
+    fn peek_char(&mut self) -> Option<&char> {
+        match self.chars.peek() {
+            Some((i, c)) => {
+                self.position = i.to_owned();
+                Some(c)
+            }
+            None => None,
+        }
+    }
+
+    fn next_char(&mut self) -> Option<char> {
+        match self.chars.next() {
+            Some((i, c)) => {
+                self.position = i;
+                Some(c)
+            }
+            None => None,
+        }
+    }
+
+    fn eat_digits_as_f64(&mut self) -> Option<f64> {
+        let n = self.next_char()?;
+        let mut number = n.to_string().parse::<f64>().unwrap();
+        let mut peek = self.peek_char().cloned();
+        while let Some(c) = peek {
+            if !c.is_digit(10) {
+                break;
+            }
+            self.next_char();
+            let digit_value = c.to_string().parse::<f64>().unwrap();
+            number = number * 10f64 + digit_value;
+
+            peek = self.peek_char().cloned();
+        }
+        Some(number)
+    }
 }
 
-pub fn lex(s: &str) -> Vec<Token> {
-    let mut tkns = Vec::<Token>::new();
-    let mut chars = s.chars().peekable();
-    while let Some(c) = chars.peek() {
-        match c {
-            _ws if c.is_whitespace() => {
-                chars.next();
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Token;
+    fn next(&mut self) -> Option<Token> {
+        // Eat whitespace
+        while let Some(c) = self.peek_char() {
+            if c.is_whitespace() {
+                self.next_char();
+            } else {
+                break;
             }
-            n if n.is_digit(10) => {
-                let mut number = eat_digits_as_f64(&mut chars).unwrap();
-                // check for decimal portion:
-                match chars.peek().cloned() {
-                    Some(c) if c == '.' => {
-                        chars.next();
-                        let fraction = eat_digits_as_f64(&mut chars).unwrap();
-                        let places = fraction.log10().ceil();
-                        number += fraction / 10f64.powf(places);
-                    }
-                    _ => {}
-                }
-                tkns.push(Token::Number(number));
-            }
-            '+' => {
-                chars.next();
-                tkns.push(Token::Plus)
-            }
-            '-' => {
-                chars.next();
-                tkns.push(Token::Minus)
-            }
-            '*' => {
-                chars.next();
-                tkns.push(Token::Times)
-            }
-            '/' => {
-                chars.next();
-                tkns.push(Token::Divide)
-            }
-            '^' => {
-                chars.next();
-                tkns.push(Token::Exponent)
-            }
-            '(' => {
-                chars.next();
-                tkns.push(Token::LParen)
-            }
-            ')' => {
-                chars.next();
-                tkns.push(Token::RParen)
-            }
-            _ => panic!("Unexpected input: {}", c),
         }
+
+        let _start = self.position;
+        let token = match self.peek_char() {
+            Some(c) => match c {
+                n if n.is_digit(10) => {
+                    let mut number = self.eat_digits_as_f64().unwrap();
+                    // check for decimal portion:
+                    match self.peek_char().cloned() {
+                        Some(c) if c == '.' => {
+                            self.next_char();
+                            let fraction = self.eat_digits_as_f64().unwrap();
+                            let places = fraction.log10().ceil();
+                            number += fraction / 10f64.powf(places);
+                        }
+                        _ => {}
+                    }
+                    Some(Token::Number(number))
+                }
+                '+' => {
+                    self.next_char();
+                    Some(Token::Plus)
+                }
+                '-' => {
+                    self.next_char();
+                    Some(Token::Minus)
+                }
+                '*' => {
+                    self.next_char();
+                    Some(Token::Times)
+                }
+                '/' => {
+                    self.next_char();
+                    Some(Token::Divide)
+                }
+                '^' => {
+                    self.next_char();
+                    Some(Token::Exponent)
+                }
+                '(' => {
+                    self.next_char();
+                    Some(Token::LParen)
+                }
+                ')' => {
+                    self.next_char();
+                    Some(Token::RParen)
+                }
+                _ => panic!("Unexpected input: {}", c),
+            },
+            None => None,
+        };
+        let _end = self.position;
+        token
+    }
+}
+
+///
+/// Lexes the given string and returns a
+/// Vec<Token> (non-lazy)
+/// 
+pub fn lex(s: &str) -> Vec<Token> {
+    let lexer = Lexer::new(s);
+    let mut tkns: Vec<Token> = vec![];
+    for tkn in lexer {
+        tkns.push(tkn);
     }
     tkns
 }

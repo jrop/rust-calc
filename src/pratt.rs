@@ -92,7 +92,7 @@ mod tests {
 
     #[test]
     fn number() {
-        let tkns = lex(&"1".to_owned());
+        let tkns = lex("1");
         let mut tkns_iter = tkns.iter().peekable();
         let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
         assert_eq!(ast, Node::Number(1_f64));
@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn plus_times() {
-        let tkns = lex(&"1+2*3".to_owned());
+        let tkns = lex("1+2*3");
         let mut tkns_iter = tkns.iter().peekable();
         let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
         assert_eq!(
@@ -119,7 +119,7 @@ mod tests {
 
     #[test]
     fn times_plus() {
-        let tkns = lex(&"1*2+3".to_owned());
+        let tkns = lex("1*2+3");
         let mut tkns_iter = tkns.iter().peekable();
         let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
         assert_eq!(
@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn parens() {
-        let tkns = lex(&"1*(2+3)".to_owned());
+        let tkns = lex("1*(2+3)");
         let mut tkns_iter = tkns.iter().peekable();
         let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
         assert_eq!(
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn rassoc() {
-        let tkns = lex(&"1^2^3".to_owned());
+        let tkns = lex("1^2^3");
         let mut tkns_iter = tkns.iter().peekable();
         let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
         assert_eq!(
