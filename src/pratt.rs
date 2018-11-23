@@ -1,12 +1,14 @@
 use ast::Node;
-use lexer::Token;
+use lexer::{Lexer, Token};
 
 pub struct Pratt<'a> {
-    tokens: &'a mut std::iter::Peekable<std::slice::Iter<'a, Token>>,
+    lexer: std::iter::Peekable<Lexer<'a>>,
 }
 impl<'a> Pratt<'a> {
-    pub fn new(tokens: &'a mut std::iter::Peekable<std::slice::Iter<'a, Token>>) -> Pratt<'a> {
-        Pratt { tokens }
+    pub fn new(lexer: Lexer<'a>) -> Pratt<'a> {
+        Pratt {
+            lexer: lexer.peekable(),
+        }
     }
 
     pub fn bp(&self, t: &Token) -> usize {
@@ -31,7 +33,7 @@ impl<'a> Pratt<'a> {
             }
             Token::LParen => {
                 let right = self.expr(0)?;
-                match self.tokens.next() {
+                match self.lexer.next() {
                     Some(Token::RParen) => Ok(right),
                     _ => Err("Expected ')'".to_owned()),
                 }
@@ -59,26 +61,26 @@ impl<'a> Pratt<'a> {
     }
 
     fn next_is_eof(&mut self) -> bool {
-        let peeked = self.tokens.peek();
+        let peeked = self.lexer.peek();
         peeked.is_none()
     }
     pub fn expr(&mut self, rbp: usize) -> Result<Node, String> {
         let err = "Undexpected EOF";
-        let mut t = self.tokens.next().ok_or(err)?;
+        let mut t = self.lexer.next().ok_or(err)?;
 
-        let mut left = self.nud(t, self.bp(t))?;
+        let mut left = self.nud(&t, self.bp(&t))?;
         if self.next_is_eof() {
             return Ok(left);
         }
-        t = self.tokens.peek().unwrap();
-        while !self.next_is_eof() && rbp < self.bp(t) {
-            let op = self.tokens.next().ok_or(err)?;
-            left = self.led(left, op, self.bp(&op))?;
+        t = self.lexer.peek().unwrap().to_owned();
+        while !self.next_is_eof() && rbp < self.bp(&t) {
+            let op = self.lexer.next().ok_or(err)?;
+            left = self.led(left, &op, self.bp(&op))?;
 
             if self.next_is_eof() {
                 break;
             }
-            t = self.tokens.peek().unwrap();
+            t = self.lexer.peek().unwrap().to_owned();
         }
         Ok(left)
     }
@@ -87,22 +89,18 @@ impl<'a> Pratt<'a> {
 #[cfg(test)]
 mod tests {
     use ast::Node;
-    use lexer::{lex, Token};
+    use lexer::{Lexer, Token};
     use pratt::Pratt;
 
     #[test]
     fn number() {
-        let tkns = lex("1");
-        let mut tkns_iter = tkns.iter().peekable();
-        let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
+        let ast = Pratt::new(Lexer::new("1")).expr(0).unwrap();
         assert_eq!(ast, Node::Number(1_f64));
     }
 
     #[test]
     fn plus_times() {
-        let tkns = lex("1+2*3");
-        let mut tkns_iter = tkns.iter().peekable();
-        let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
+        let ast = Pratt::new(Lexer::new("1+2*3")).expr(0).unwrap();
         assert_eq!(
             ast,
             Node::Binary(
@@ -119,9 +117,7 @@ mod tests {
 
     #[test]
     fn times_plus() {
-        let tkns = lex("1*2+3");
-        let mut tkns_iter = tkns.iter().peekable();
-        let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
+        let ast = Pratt::new(Lexer::new("1*2+3")).expr(0).unwrap();
         assert_eq!(
             ast,
             Node::Binary(
@@ -138,9 +134,7 @@ mod tests {
 
     #[test]
     fn parens() {
-        let tkns = lex("1*(2+3)");
-        let mut tkns_iter = tkns.iter().peekable();
-        let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
+        let ast = Pratt::new(Lexer::new("1*(2+3)")).expr(0).unwrap();
         assert_eq!(
             ast,
             Node::Binary(
@@ -157,9 +151,7 @@ mod tests {
 
     #[test]
     fn rassoc() {
-        let tkns = lex("1^2^3");
-        let mut tkns_iter = tkns.iter().peekable();
-        let ast = Pratt::new(&mut tkns_iter).expr(0).unwrap();
+        let ast = Pratt::new(Lexer::new("1^2^3")).expr(0).unwrap();
         assert_eq!(
             ast,
             Node::Binary(

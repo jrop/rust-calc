@@ -15,9 +15,7 @@ fn prompt_and_read_line() -> std::io::Result<String> {
 
 fn main() {
     while let Ok(line) = prompt_and_read_line() {
-        let tkns = lexer::lex(&line);
-        let mut tkns_iter = tkns.iter().peekable();
-        let mut parser = pratt::Pratt::new(&mut tkns_iter);
+        let mut parser = pratt::Pratt::new(lexer::Lexer::new(&line));
         match parser.expr(0) {
             Ok(node) => println!("result={:?}", ast::eval(node)),
             Err(reason) => println!("Error: {:?}", reason),
