@@ -126,22 +126,17 @@ impl<'a> Iterator for Lexer<'a> {
     }
 }
 
-///
-/// Lexes the given string and returns a
-/// Vec<Token> (non-lazy)
-/// 
-pub fn lex(s: &str) -> Vec<Token> {
-    let lexer = Lexer::new(s);
-    let mut tkns: Vec<Token> = vec![];
-    for tkn in lexer {
-        tkns.push(tkn);
-    }
-    tkns
-}
-
 #[cfg(test)]
 mod tests {
-    use lexer::{lex, Token};
+    use lexer::{Lexer, Token};
+
+    fn lex(s: &str) -> Vec<Token> {
+        let mut tkns: Vec<Token> = vec![];
+        for tkn in Lexer::new(s) {
+            tkns.push(tkn)
+        }
+        tkns
+    }
 
     #[test]
     fn numbers() {
