@@ -1,12 +1,12 @@
 use ast::Node;
 use lexer::{Lexer, Token};
 
-pub struct Pratt<'a> {
+pub struct Parser<'a> {
     lexer: std::iter::Peekable<Lexer<'a>>,
 }
-impl<'a> Pratt<'a> {
-    pub fn new(lexer: Lexer<'a>) -> Pratt<'a> {
-        Pratt {
+impl<'a> Parser<'a> {
+    pub fn new(lexer: Lexer<'a>) -> Parser<'a> {
+        Parser {
             lexer: lexer.peekable(),
         }
     }
@@ -90,17 +90,17 @@ impl<'a> Pratt<'a> {
 mod tests {
     use ast::Node;
     use lexer::{Lexer, Token};
-    use pratt::Pratt;
+    use parser::Parser;
 
     #[test]
     fn number() {
-        let ast = Pratt::new(Lexer::new("1")).expr(0).unwrap();
+        let ast = Parser::new(Lexer::new("1")).expr(0).unwrap();
         assert_eq!(ast, Node::Number(1_f64));
     }
 
     #[test]
     fn plus_times() {
-        let ast = Pratt::new(Lexer::new("1+2*3")).expr(0).unwrap();
+        let ast = Parser::new(Lexer::new("1+2*3")).expr(0).unwrap();
         assert_eq!(
             ast,
             Node::Binary(
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn times_plus() {
-        let ast = Pratt::new(Lexer::new("1*2+3")).expr(0).unwrap();
+        let ast = Parser::new(Lexer::new("1*2+3")).expr(0).unwrap();
         assert_eq!(
             ast,
             Node::Binary(
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn parens() {
-        let ast = Pratt::new(Lexer::new("1*(2+3)")).expr(0).unwrap();
+        let ast = Parser::new(Lexer::new("1*(2+3)")).expr(0).unwrap();
         assert_eq!(
             ast,
             Node::Binary(
@@ -151,7 +151,7 @@ mod tests {
 
     #[test]
     fn rassoc() {
-        let ast = Pratt::new(Lexer::new("1^2^3")).expr(0).unwrap();
+        let ast = Parser::new(Lexer::new("1^2^3")).expr(0).unwrap();
         assert_eq!(
             ast,
             Node::Binary(
