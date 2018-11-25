@@ -1,5 +1,5 @@
 use ast::Node;
-use lexer::{Lexer, Token};
+use lexer::{Lexer, Token, TokenKind};
 
 pub struct Parser<'a> {
     lexer: std::iter::Peekable<Lexer<'a>>,
@@ -11,30 +11,30 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn bp(&self, t: &Token) -> usize {
-        match t {
-            Token::RParen => 0,
-            Token::Plus => 10,
-            Token::Minus => 10,
-            Token::Times => 20,
-            Token::Divide => 20,
-            Token::Exponent => 30,
-            Token::LParen => 40,
-            Token::Number(_) => 100,
+    pub fn bp(&self, t: &Box<Token>) -> usize {
+        match t.kind {
+            TokenKind::RParen => 0,
+            TokenKind::Plus => 10,
+            TokenKind::Minus => 10,
+            TokenKind::Times => 20,
+            TokenKind::Divide => 20,
+            TokenKind::Exponent => 30,
+            TokenKind::LParen => 40,
+            _ => 100,
         }
     }
 
-    pub fn nud(&mut self, t: &Token, _bp: usize) -> Result<Node, String> {
-        match t {
-            Token::Number(n) => Ok(Node::Number(*n)),
-            Token::Plus | Token::Minus => {
+    pub fn nud(&mut self, t: Box<Token>, _bp: usize) -> Result<Node, String> {
+        match t.kind {
+            TokenKind::Number => Ok(Node::Number(t.value.parse::<f64>().unwrap())),
+            TokenKind::Plus | TokenKind::Minus => {
                 let right = self.expr(0)?;
-                Ok(Node::Unary(t.clone(), Box::new(right)))
+                Ok(Node::Unary(t, Box::new(right)))
             }
-            Token::LParen => {
+            TokenKind::LParen => {
                 let right = self.expr(0)?;
                 match self.lexer.next() {
-                    Some(Token::RParen) => Ok(right),
+                    Some(ref t) if t.kind == TokenKind::RParen => Ok(right),
                     _ => Err("Expected ')'".to_owned()),
                 }
             }
@@ -42,15 +42,15 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn led(&mut self, left: Node, op: &Token, bp: usize) -> Result<Node, String> {
-        match op {
-            Token::Plus | Token::Minus | Token::Times | Token::Divide => {
+    pub fn led(&mut self, left: Node, op: Box<Token>, bp: usize) -> Result<Node, String> {
+        match op.kind {
+            TokenKind::Plus | TokenKind::Minus | TokenKind::Times | TokenKind::Divide => {
                 let right = self.expr(bp)?;
-                Ok(Node::Binary(Box::new(left), op.clone(), Box::new(right)))
+                Ok(Node::Binary(Box::new(left), op, Box::new(right)))
             }
-            Token::Exponent => {
+            TokenKind::Exponent => {
                 let right = self.expr(bp - 1)?;
-                Ok(Node::Binary(Box::new(left), op.clone(), Box::new(right)))
+                Ok(Node::Binary(Box::new(left), op, Box::new(right)))
             }
             _ => Err(format!(
                 "Unexpected token in LED context: {:?} (left={:?})",
@@ -60,27 +60,26 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn next_is_eof(&mut self) -> bool {
-        let peeked = self.lexer.peek();
-        peeked.is_none()
-    }
     pub fn expr(&mut self, rbp: usize) -> Result<Node, String> {
         let err = "Undexpected EOF";
-        let mut t = self.lexer.next().ok_or(err)?;
+        let first_t = self.lexer.next().ok_or(err)?;
+        let first_t_bp = self.bp(&first_t);
 
-        let mut left = self.nud(&t, self.bp(&t))?;
-        if self.next_is_eof() {
+        let mut left = self.nud(first_t, first_t_bp)?;
+        if self.lexer.peek().is_none() {
             return Ok(left);
         }
-        t = self.lexer.peek().unwrap().to_owned();
-        while !self.next_is_eof() && rbp < self.bp(&t) {
-            let op = self.lexer.next().ok_or(err)?;
-            left = self.led(left, &op, self.bp(&op))?;
 
-            if self.next_is_eof() {
+        let mut peeked = self.lexer.peek();
+        while !peeked.is_none() && rbp < self.bp(peeked.unwrap()) {
+            let op = self.lexer.next().ok_or(err)?;
+            let op_bp = self.bp(&op);
+            left = self.led(left, op, op_bp)?;
+
+            if self.lexer.peek().is_none() {
                 break;
             }
-            t = self.lexer.peek().unwrap().to_owned();
+            peeked = self.lexer.peek();
         }
         Ok(left)
     }
@@ -89,7 +88,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use ast::Node;
-    use lexer::{Lexer, Token};
+    use lexer::{Lexer, Token, TokenKind};
     use parser::Parser;
 
     #[test]
@@ -105,10 +104,10 @@ mod tests {
             ast,
             Node::Binary(
                 Box::new(Node::Number(1_f64)),
-                Token::Plus,
+                Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 0, 0)),
                 Box::new(Node::Binary(
                     Box::new(Node::Number(2_f64)),
-                    Token::Times,
+                    Box::new(Token::new(TokenKind::Times, "*".to_owned(), 0, 0)),
                     Box::new(Node::Number(3_f64))
                 ))
             )
@@ -123,10 +122,10 @@ mod tests {
             Node::Binary(
                 Box::new(Node::Binary(
                     Box::new(Node::Number(1_f64)),
-                    Token::Times,
+                    Box::new(Token::new(TokenKind::Times, "*".to_owned(), 0, 0)),
                     Box::new(Node::Number(2_f64))
                 )),
-                Token::Plus,
+                Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 0, 0)),
                 Box::new(Node::Number(3_f64)),
             )
         );
@@ -139,10 +138,10 @@ mod tests {
             ast,
             Node::Binary(
                 Box::new(Node::Number(1_f64)),
-                Token::Times,
+                Box::new(Token::new(TokenKind::Times, "*".to_owned(), 0, 0)),
                 Box::new(Node::Binary(
                     Box::new(Node::Number(2_f64)),
-                    Token::Plus,
+                    Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 0, 0)),
                     Box::new(Node::Number(3_f64)),
                 )),
             )
@@ -156,10 +155,10 @@ mod tests {
             ast,
             Node::Binary(
                 Box::new(Node::Number(1_f64)),
-                Token::Exponent,
+                Box::new(Token::new(TokenKind::Exponent, "^".to_owned(), 0, 0)),
                 Box::new(Node::Binary(
                     Box::new(Node::Number(2_f64)),
-                    Token::Exponent,
+                    Box::new(Token::new(TokenKind::Exponent, "^".to_owned(), 0, 0)),
                     Box::new(Node::Number(3_f64)),
                 )),
             )
