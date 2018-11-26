@@ -31,12 +31,14 @@ impl Token {
 
 pub struct Lexer<'a> {
     position: usize,
+    peeked: Option<Box<Token>>,
     chars: std::iter::Peekable<std::iter::Enumerate<std::str::Chars<'a>>>,
 }
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a str) -> Lexer<'a> {
         Lexer {
             position: 0,
+            peeked: None,
             chars: source.chars().enumerate().peekable(),
         }
     }
@@ -73,11 +75,26 @@ impl<'a> Lexer<'a> {
         }
         Some(number)
     }
-}
 
-impl<'a> Iterator for Lexer<'a> {
-    type Item = Box<Token>;
-    fn next(&mut self) -> Option<Box<Token>> {
+    pub fn expect(&mut self, kind: TokenKind) -> Result<Box<Token>, String> {
+        let tkn = self.next();
+        match tkn {
+            Some(t) => {
+                if t.kind == kind {
+                    Ok(t)
+                } else {
+                    Err(format!("Unexpected token: {:?}", t))
+                }
+            }
+            _ => Err("Unexpected EOF".to_owned()),
+        }
+    }
+
+    pub fn peek(&mut self) -> &Option<Box<Token>> {
+        if self.peeked.is_some() {
+            return &self.peeked;
+        }
+
         // Eat whitespace
         while let Some(c) = self.peek_char() {
             if c.is_whitespace() {
@@ -182,10 +199,23 @@ impl<'a> Iterator for Lexer<'a> {
         let _end = self.position;
 
         // Box it up:
-        match token {
+        self.peeked = match token {
             Some(t) => Some(Box::new(t)),
             None => None,
+        };
+        &self.peeked
+    }
+}
+
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Box<Token>;
+    fn next(&mut self) -> Option<Box<Token>> {
+        if self.peeked.is_none() {
+            self.peek();
         }
+        let tkn = self.peeked.as_ref().cloned();
+        self.peeked = None;
+        tkn
     }
 }
 

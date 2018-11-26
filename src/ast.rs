@@ -5,6 +5,7 @@ pub enum Node {
     Number(f64),
     Unary(Box<Token>, Box<Node>),
     Binary(Box<Node>, Box<Token>, Box<Node>),
+    Application(String, Box<Node>),
 }
 
 pub fn eval(node: Node) -> f64 {
@@ -22,6 +23,21 @@ pub fn eval(node: Node) -> f64 {
             TokenKind::Divide => eval(*left) / eval(*right),
             TokenKind::Exponent => eval(*left).powf(eval(*right)),
             _ => 0_f64,
+        },
+        Node::Application(func, arg) => match func.as_str() {
+            "abs" => eval(*arg).abs(),
+            "acos" => eval(*arg).acos(),
+            "asin" => eval(*arg).asin(),
+            "atan" => eval(*arg).atan(),
+            "ceil" => eval(*arg).ceil(),
+            "cos" => eval(*arg).cos(),
+            "floor" => eval(*arg).floor(),
+            "ln" => eval(*arg).ln(),
+            "log" => eval(*arg).log10(),
+            "log2" => eval(*arg).log2(),
+            "sin" => eval(*arg).sin(),
+            "tan" => eval(*arg).tan(),
+            _ => panic!("Unknown function {:?}", func),
         },
     }
 }
@@ -55,5 +71,11 @@ mod tests {
         let _4 = Box::new(Node::Number(4_f64));
         let times = Box::new(Token::new(TokenKind::Times, "*".to_owned(), 0, 0));
         assert_eq!(ast::eval(Node::Binary(_3, times, _4)), 12_f64);
+    }
+
+    #[test]
+    fn application() {
+        let pi = Box::new(Node::Number(std::f64::consts::PI));
+        assert_eq!(ast::eval(Node::Application("cos".to_owned(), pi)), -1_f64);
     }
 }
