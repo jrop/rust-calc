@@ -1,27 +1,43 @@
-use lexer::Token;
+use lexer::{Token, TokenKind};
 
 #[derive(Debug, PartialEq)]
 pub enum Node {
     Number(f64),
-    Unary(Token, Box<Node>),
-    Binary(Box<Node>, Token, Box<Node>),
+    Unary(Box<Token>, Box<Node>),
+    Binary(Box<Node>, Box<Token>, Box<Node>),
+    Application(String, Box<Node>),
 }
 
 pub fn eval(node: Node) -> f64 {
     match node {
         Node::Number(n) => n,
-        Node::Unary(op, node) => match op {
-            Token::Minus => -eval(*node),
-            Token::Plus => eval(*node),
+        Node::Unary(op, node) => match op.kind {
+            TokenKind::Minus => -eval(*node),
+            TokenKind::Plus => eval(*node),
             _ => 0_f64,
         },
-        Node::Binary(left, op, right) => match op {
-            Token::Plus => eval(*left) + eval(*right),
-            Token::Minus => eval(*left) - eval(*right),
-            Token::Times => eval(*left) * eval(*right),
-            Token::Divide => eval(*left) / eval(*right),
-            Token::Exponent => eval(*left).powf(eval(*right)),
+        Node::Binary(left, op, right) => match op.kind {
+            TokenKind::Plus => eval(*left) + eval(*right),
+            TokenKind::Minus => eval(*left) - eval(*right),
+            TokenKind::Times => eval(*left) * eval(*right),
+            TokenKind::Divide => eval(*left) / eval(*right),
+            TokenKind::Exponent => eval(*left).powf(eval(*right)),
             _ => 0_f64,
+        },
+        Node::Application(func, arg) => match func.as_str() {
+            "abs" => eval(*arg).abs(),
+            "acos" => eval(*arg).acos(),
+            "asin" => eval(*arg).asin(),
+            "atan" => eval(*arg).atan(),
+            "ceil" => eval(*arg).ceil(),
+            "cos" => eval(*arg).cos(),
+            "floor" => eval(*arg).floor(),
+            "ln" => eval(*arg).ln(),
+            "log" => eval(*arg).log10(),
+            "log2" => eval(*arg).log2(),
+            "sin" => eval(*arg).sin(),
+            "tan" => eval(*arg).tan(),
+            _ => panic!("Unknown function {:?}", func),
         },
     }
 }
@@ -30,7 +46,7 @@ pub fn eval(node: Node) -> f64 {
 mod tests {
     use ast;
     use ast::Node;
-    use lexer::Token;
+    use lexer::{Token, TokenKind};
 
     #[test]
     fn number() {
@@ -40,14 +56,26 @@ mod tests {
     #[test]
     fn unary() {
         let num = Box::new(Node::Number(3.14_f64));
-        assert_eq!(ast::eval(Node::Unary(Token::Minus, num)), -3.14_f64);
+        assert_eq!(
+            ast::eval(Node::Unary(
+                Box::new(Token::new(TokenKind::Minus, "-".to_owned(), 0, 0)),
+                num
+            )),
+            -3.14_f64
+        );
     }
 
     #[test]
     fn binary() {
         let _3 = Box::new(Node::Number(3_f64));
         let _4 = Box::new(Node::Number(4_f64));
-        let times = Token::Times;
+        let times = Box::new(Token::new(TokenKind::Times, "*".to_owned(), 0, 0));
         assert_eq!(ast::eval(Node::Binary(_3, times, _4)), 12_f64);
+    }
+
+    #[test]
+    fn application() {
+        let pi = Box::new(Node::Number(std::f64::consts::PI));
+        assert_eq!(ast::eval(Node::Application("cos".to_owned(), pi)), -1_f64);
     }
 }

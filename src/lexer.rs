@@ -1,6 +1,7 @@
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Token {
-    Number(f64),
+pub enum TokenKind {
+    Identifier,
+    Number,
     Plus,
     Minus,
     Times,
@@ -10,59 +11,90 @@ pub enum Token {
     RParen,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub value: String,
+    pub start: usize,
+    pub end: usize,
+}
+impl Token {
+    pub fn new(kind: TokenKind, value: String, start: usize, end: usize) -> Token {
+        Token {
+            kind,
+            value,
+            start,
+            end,
+        }
+    }
+}
+
 pub struct Lexer<'a> {
     position: usize,
+    peeked: Option<Box<Token>>,
     chars: std::iter::Peekable<std::iter::Enumerate<std::str::Chars<'a>>>,
 }
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a str) -> Lexer<'a> {
         Lexer {
             position: 0,
+            peeked: None,
             chars: source.chars().enumerate().peekable(),
         }
     }
 
     fn peek_char(&mut self) -> Option<&char> {
         match self.chars.peek() {
-            Some((i, c)) => {
-                self.position = i.to_owned();
-                Some(c)
-            }
+            Some((_, c)) => Some(c),
             None => None,
         }
     }
 
     fn next_char(&mut self) -> Option<char> {
         match self.chars.next() {
-            Some((i, c)) => {
-                self.position = i;
+            Some((_, c)) => {
+                self.position += 1;
                 Some(c)
             }
             None => None,
         }
     }
 
-    fn eat_digits_as_f64(&mut self) -> Option<f64> {
+    fn eat_digits(&mut self) -> Option<String> {
         let n = self.next_char()?;
-        let mut number = n.to_string().parse::<f64>().unwrap();
+        let mut number = n.to_string();
         let mut peek = self.peek_char().cloned();
         while let Some(c) = peek {
             if !c.is_digit(10) {
                 break;
             }
             self.next_char();
-            let digit_value = c.to_string().parse::<f64>().unwrap();
-            number = number * 10f64 + digit_value;
+            number = format!("{}{}", number, c);
 
             peek = self.peek_char().cloned();
         }
         Some(number)
     }
-}
 
-impl<'a> Iterator for Lexer<'a> {
-    type Item = Token;
-    fn next(&mut self) -> Option<Token> {
+    pub fn expect(&mut self, kind: TokenKind) -> Result<Box<Token>, String> {
+        let tkn = self.next();
+        match tkn {
+            Some(t) => {
+                if t.kind == kind {
+                    Ok(t)
+                } else {
+                    Err(format!("Unexpected token: {:?}", t))
+                }
+            }
+            _ => Err("Unexpected EOF".to_owned()),
+        }
+    }
+
+    pub fn peek(&mut self) -> &Option<Box<Token>> {
+        if self.peeked.is_some() {
+            return &self.peeked;
+        }
+
         // Eat whitespace
         while let Some(c) = self.peek_char() {
             if c.is_whitespace() {
@@ -72,101 +104,185 @@ impl<'a> Iterator for Lexer<'a> {
             }
         }
 
-        let _start = self.position;
+        let start = self.position;
         let token = match self.peek_char() {
             Some(c) => match c {
                 n if n.is_digit(10) => {
-                    let mut number = self.eat_digits_as_f64().unwrap();
+                    let mut number = self.eat_digits().unwrap();
                     // check for decimal portion:
                     match self.peek_char().cloned() {
                         Some(c) if c == '.' => {
                             self.next_char();
-                            let fraction = self.eat_digits_as_f64().unwrap();
-                            let places = fraction.log10().ceil();
-                            number += fraction / 10f64.powf(places);
+                            number = format!("{}.{}", number, self.eat_digits().unwrap());
                         }
                         _ => {}
                     }
-                    Some(Token::Number(number))
+                    Some(Token::new(TokenKind::Number, number, start, self.position))
                 }
                 '+' => {
                     self.next_char();
-                    Some(Token::Plus)
+                    Some(Token::new(
+                        TokenKind::Plus,
+                        "+".to_owned(),
+                        start,
+                        self.position,
+                    ))
                 }
                 '-' => {
                     self.next_char();
-                    Some(Token::Minus)
+                    Some(Token::new(
+                        TokenKind::Minus,
+                        "-".to_owned(),
+                        start,
+                        self.position,
+                    ))
                 }
                 '*' => {
                     self.next_char();
-                    Some(Token::Times)
+                    Some(Token::new(
+                        TokenKind::Times,
+                        "*".to_owned(),
+                        start,
+                        self.position,
+                    ))
                 }
                 '/' => {
                     self.next_char();
-                    Some(Token::Divide)
+                    Some(Token::new(
+                        TokenKind::Divide,
+                        "/".to_owned(),
+                        start,
+                        self.position,
+                    ))
                 }
                 '^' => {
                     self.next_char();
-                    Some(Token::Exponent)
+                    Some(Token::new(
+                        TokenKind::Exponent,
+                        "^".to_owned(),
+                        start,
+                        self.position,
+                    ))
                 }
                 '(' => {
                     self.next_char();
-                    Some(Token::LParen)
+                    Some(Token::new(
+                        TokenKind::LParen,
+                        "(".to_owned(),
+                        start,
+                        self.position,
+                    ))
                 }
                 ')' => {
                     self.next_char();
-                    Some(Token::RParen)
+                    Some(Token::new(
+                        TokenKind::RParen,
+                        ")".to_owned(),
+                        start,
+                        self.position,
+                    ))
+                }
+                c if c.is_alphabetic() => {
+                    let mut id = String::from(self.next_char().unwrap().to_string());
+                    while let Some(c) = self.peek_char() {
+                        if !c.is_alphabetic() {
+                            break;
+                        }
+                        id += self.next_char().unwrap().to_string().as_str();
+                    }
+                    Some(Token::new(TokenKind::Identifier, id, start, self.position))
                 }
                 _ => panic!("Unexpected input: {}", c),
             },
             None => None,
         };
         let _end = self.position;
-        token
+
+        // Box it up:
+        self.peeked = match token {
+            Some(t) => Some(Box::new(t)),
+            None => None,
+        };
+        &self.peeked
     }
 }
 
-///
-/// Lexes the given string and returns a
-/// Vec<Token> (non-lazy)
-/// 
-pub fn lex(s: &str) -> Vec<Token> {
-    let lexer = Lexer::new(s);
-    let mut tkns: Vec<Token> = vec![];
-    for tkn in lexer {
-        tkns.push(tkn);
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Box<Token>;
+    fn next(&mut self) -> Option<Box<Token>> {
+        if self.peeked.is_none() {
+            self.peek();
+        }
+        let tkn = self.peeked.as_ref().cloned();
+        self.peeked = None;
+        tkn
     }
-    tkns
 }
 
 #[cfg(test)]
 mod tests {
-    use lexer::{lex, Token};
+    use lexer::{Lexer, Token, TokenKind};
+
+    fn lex(s: &str) -> Vec<Box<Token>> {
+        let mut tkns: Vec<Box<Token>> = vec![];
+        for tkn in Lexer::new(s) {
+            tkns.push(tkn)
+        }
+        tkns
+    }
 
     #[test]
     fn numbers() {
         let tkns = lex("2 3.14");
         assert_eq!(tkns.len(), 2);
-        assert_eq!(tkns[0], Token::Number(2_f64));
-        assert_eq!(tkns[1], Token::Number(3.14_f64));
+        assert_eq!(
+            *tkns[0],
+            Token::new(TokenKind::Number, "2".to_owned(), 0, 1)
+        );
+        assert_eq!(
+            *tkns[1],
+            Token::new(TokenKind::Number, "3.14".to_owned(), 2, 6)
+        );
     }
 
     #[test]
     fn operators() {
         let tkns = lex("+-*/^()");
         assert_eq!(tkns.len(), 7);
-        assert_eq!(tkns[0], Token::Plus);
-        assert_eq!(tkns[1], Token::Minus);
-        assert_eq!(tkns[2], Token::Times);
-        assert_eq!(tkns[3], Token::Divide);
-        assert_eq!(tkns[4], Token::Exponent);
-        assert_eq!(tkns[5], Token::LParen);
-        assert_eq!(tkns[6], Token::RParen);
+        assert_eq!(*tkns[0], Token::new(TokenKind::Plus, "+".to_owned(), 0, 1));
+        assert_eq!(*tkns[1], Token::new(TokenKind::Minus, "-".to_owned(), 1, 2));
+        assert_eq!(*tkns[2], Token::new(TokenKind::Times, "*".to_owned(), 2, 3));
+        assert_eq!(
+            *tkns[3],
+            Token::new(TokenKind::Divide, "/".to_owned(), 3, 4)
+        );
+        assert_eq!(
+            *tkns[4],
+            Token::new(TokenKind::Exponent, "^".to_owned(), 4, 5)
+        );
+        assert_eq!(
+            *tkns[5],
+            Token::new(TokenKind::LParen, "(".to_owned(), 5, 6)
+        );
+        assert_eq!(
+            *tkns[6],
+            Token::new(TokenKind::RParen, ")".to_owned(), 6, 7)
+        );
+    }
+
+    #[test]
+    fn identifier() {
+        let tkns = lex("abc");
+        assert_eq!(tkns.len(), 1);
+        assert_eq!(
+            *tkns[0],
+            Token::new(TokenKind::Identifier, "abc".to_owned(), 0, 3)
+        );
     }
 
     #[test]
     fn eof() {
-        let tkns = lex(&"".to_owned());
+        let tkns = lex("");
         assert_eq!(tkns.len(), 0);
     }
 }
