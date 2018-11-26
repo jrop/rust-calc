@@ -11,7 +11,7 @@ pub enum TokenKind {
     RParen,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub kind: TokenKind,
     pub value: String,
@@ -43,18 +43,15 @@ impl<'a> Lexer<'a> {
 
     fn peek_char(&mut self) -> Option<&char> {
         match self.chars.peek() {
-            Some((i, c)) => {
-                self.position = i.to_owned();
-                Some(c)
-            }
+            Some((_, c)) => Some(c),
             None => None,
         }
     }
 
     fn next_char(&mut self) -> Option<char> {
         match self.chars.next() {
-            Some((i, c)) => {
-                self.position = i;
+            Some((_, c)) => {
+                self.position += 1;
                 Some(c)
             }
             None => None,
@@ -169,7 +166,7 @@ impl<'a> Iterator for Lexer<'a> {
                     ))
                 }
                 c if c.is_alphabetic() => {
-                    let mut id = format!("{:?}", self.next_char());
+                    let mut id = String::from(self.next_char().unwrap().to_string());
                     while let Some(c) = self.peek_char() {
                         if !c.is_alphabetic() {
                             break;
@@ -244,8 +241,18 @@ mod tests {
     }
 
     #[test]
+    fn identifier() {
+        let tkns = lex("abc");
+        assert_eq!(tkns.len(), 1);
+        assert_eq!(
+            *tkns[0],
+            Token::new(TokenKind::Identifier, "abc".to_owned(), 0, 3)
+        );
+    }
+
+    #[test]
     fn eof() {
-        let tkns = lex(&"".to_owned());
+        let tkns = lex("");
         assert_eq!(tkns.len(), 0);
     }
 }

@@ -11,7 +11,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn bp(&self, t: &Box<Token>) -> usize {
+    pub fn bp(&self, t: &Token) -> usize {
         match t.kind {
             TokenKind::RParen => 0,
             TokenKind::Plus => 10,
@@ -51,7 +51,7 @@ impl<'a> Parser<'a> {
             TokenKind::Exponent => {
                 let right = self.expr(bp - 1)?;
                 Ok(Node::Binary(Box::new(left), op, Box::new(right)))
-            }
+            },
             _ => Err(format!(
                 "Unexpected token in LED context: {:?} (left={:?})",
                 op, left
@@ -70,8 +70,8 @@ impl<'a> Parser<'a> {
             return Ok(left);
         }
 
-        let mut peeked = self.lexer.peek();
-        while !peeked.is_none() && rbp < self.bp(peeked.unwrap()) {
+        let mut peeked = self.lexer.peek().cloned();
+        while !peeked.is_none() && rbp < self.bp(&peeked.unwrap()) {
             let op = self.lexer.next().ok_or(err)?;
             let op_bp = self.bp(&op);
             left = self.led(left, op, op_bp)?;
@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
             if self.lexer.peek().is_none() {
                 break;
             }
-            peeked = self.lexer.peek();
+            peeked = self.lexer.peek().cloned();
         }
         Ok(left)
     }
@@ -104,10 +104,10 @@ mod tests {
             ast,
             Node::Binary(
                 Box::new(Node::Number(1_f64)),
-                Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 0, 0)),
+                Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 1, 2)),
                 Box::new(Node::Binary(
                     Box::new(Node::Number(2_f64)),
-                    Box::new(Token::new(TokenKind::Times, "*".to_owned(), 0, 0)),
+                    Box::new(Token::new(TokenKind::Times, "*".to_owned(), 3, 4)),
                     Box::new(Node::Number(3_f64))
                 ))
             )
@@ -122,10 +122,10 @@ mod tests {
             Node::Binary(
                 Box::new(Node::Binary(
                     Box::new(Node::Number(1_f64)),
-                    Box::new(Token::new(TokenKind::Times, "*".to_owned(), 0, 0)),
+                    Box::new(Token::new(TokenKind::Times, "*".to_owned(), 1, 2)),
                     Box::new(Node::Number(2_f64))
                 )),
-                Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 0, 0)),
+                Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 3, 4)),
                 Box::new(Node::Number(3_f64)),
             )
         );
@@ -138,10 +138,10 @@ mod tests {
             ast,
             Node::Binary(
                 Box::new(Node::Number(1_f64)),
-                Box::new(Token::new(TokenKind::Times, "*".to_owned(), 0, 0)),
+                Box::new(Token::new(TokenKind::Times, "*".to_owned(), 1, 2)),
                 Box::new(Node::Binary(
                     Box::new(Node::Number(2_f64)),
-                    Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 0, 0)),
+                    Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 4, 5)),
                     Box::new(Node::Number(3_f64)),
                 )),
             )
@@ -155,10 +155,10 @@ mod tests {
             ast,
             Node::Binary(
                 Box::new(Node::Number(1_f64)),
-                Box::new(Token::new(TokenKind::Exponent, "^".to_owned(), 0, 0)),
+                Box::new(Token::new(TokenKind::Exponent, "^".to_owned(), 1, 2)),
                 Box::new(Node::Binary(
                     Box::new(Node::Number(2_f64)),
-                    Box::new(Token::new(TokenKind::Exponent, "^".to_owned(), 0, 0)),
+                    Box::new(Token::new(TokenKind::Exponent, "^".to_owned(), 3, 4)),
                     Box::new(Node::Number(3_f64)),
                 )),
             )
