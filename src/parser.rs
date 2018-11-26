@@ -2,13 +2,11 @@ use ast::Node;
 use lexer::{Lexer, Token, TokenKind};
 
 pub struct Parser<'a> {
-    lexer: std::iter::Peekable<Lexer<'a>>,
+    lexer: Lexer<'a>,
 }
 impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer<'a>) -> Parser<'a> {
-        Parser {
-            lexer: lexer.peekable(),
-        }
+        Parser { lexer }
     }
 
     pub fn bp(&self, t: &Token) -> usize {
@@ -31,6 +29,16 @@ impl<'a> Parser<'a> {
                 let right = self.expr(0)?;
                 Ok(Node::Unary(t, Box::new(right)))
             }
+            TokenKind::Identifier => match t.value.as_str() {
+                "e" => Ok(Node::Number(std::f64::consts::E)),
+                "pi" => Ok(Node::Number(std::f64::consts::PI)),
+                _ => {
+                    self.lexer.expect(TokenKind::LParen)?;
+                    let arg = self.expr(0)?;
+                    self.lexer.expect(TokenKind::RParen)?;
+                    Ok(Node::Application(t.value, Box::new(arg)))
+                }
+            },
             TokenKind::LParen => {
                 let right = self.expr(0)?;
                 match self.lexer.next() {
@@ -51,7 +59,7 @@ impl<'a> Parser<'a> {
             TokenKind::Exponent => {
                 let right = self.expr(bp - 1)?;
                 Ok(Node::Binary(Box::new(left), op, Box::new(right)))
-            },
+            }
             _ => Err(format!(
                 "Unexpected token in LED context: {:?} (left={:?})",
                 op, left
@@ -70,8 +78,16 @@ impl<'a> Parser<'a> {
             return Ok(left);
         }
 
-        let mut peeked = self.lexer.peek().cloned();
-        while peeked.is_some() && rbp < self.bp(&peeked.unwrap()) {
+        let mut peeked = self.lexer.peek().as_ref();
+        loop {
+            if peeked.is_none() {
+                break;
+            }
+            let peeked_copy = (**peeked.unwrap()).clone();
+            if rbp >= self.bp(&peeked_copy) {
+                break;
+            }
+
             let op = self.lexer.next().ok_or(err)?;
             let op_bp = self.bp(&op);
             left = self.led(left, op, op_bp)?;
@@ -79,7 +95,7 @@ impl<'a> Parser<'a> {
             if self.lexer.peek().is_none() {
                 break;
             }
-            peeked = self.lexer.peek().cloned();
+            peeked = self.lexer.peek().as_ref();
         }
         Ok(left)
     }
@@ -87,7 +103,7 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use ast::Node;
+    use ast::{eval, Node};
     use lexer::{Lexer, Token, TokenKind};
     use parser::Parser;
 
@@ -163,5 +179,23 @@ mod tests {
                 )),
             )
         );
+    }
+
+    #[test]
+    fn pi() {
+        let ast = Parser::new(Lexer::new("pi")).expr(0).unwrap();
+        assert_eq!(ast, Node::Number(std::f64::consts::PI));
+    }
+
+    #[test]
+    fn e() {
+        let ast = Parser::new(Lexer::new("e")).expr(0).unwrap();
+        assert_eq!(ast, Node::Number(std::f64::consts::E));
+    }
+
+    #[test]
+    fn func() {
+        let ast = Parser::new(Lexer::new("sin(pi/6)")).expr(0).unwrap();
+        assert_eq!(eval(ast), (std::f64::consts::PI / 6_f64).sin());
     }
 }
