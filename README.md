@@ -24,7 +24,29 @@ result=3.0
 result=9.0
 > 1^2^3
 result=1.0
+> sin(pi / 6)
+result=0.5
 ```
+
+The following constants are supported:
+
+- `e`
+- `pi`
+
+The following functions are supported:
+
+- `abs`
+- `acos`
+- `asin`
+- `atan`
+- `ceil`
+- `cos`
+- `floor`
+- `ln`
+- `log`
+- `log2`
+- `sin`
+- `tan`
 
 ## How It Works
 
