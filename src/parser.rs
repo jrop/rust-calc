@@ -71,7 +71,7 @@ impl<'a> Parser<'a> {
         }
 
         let mut peeked = self.lexer.peek().cloned();
-        while !peeked.is_none() && rbp < self.bp(&peeked.unwrap()) {
+        while peeked.is_some() && rbp < self.bp(&peeked.unwrap()) {
             let op = self.lexer.next().ok_or(err)?;
             let op_bp = self.bp(&op);
             left = self.led(left, op, op_bp)?;

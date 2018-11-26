@@ -166,7 +166,7 @@ impl<'a> Iterator for Lexer<'a> {
                     ))
                 }
                 c if c.is_alphabetic() => {
-                    let mut id = String::from(self.next_char().unwrap().to_string());
+                    let mut id = self.next_char().unwrap().to_string();
                     while let Some(c) = self.peek_char() {
                         if !c.is_alphabetic() {
                             break;
