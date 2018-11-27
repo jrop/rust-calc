@@ -120,10 +120,10 @@ mod tests {
             ast,
             Node::Binary(
                 Box::new(Node::Number(1_f64)),
-                Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 1, 2)),
+                Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 1, 2, 1, 2)),
                 Box::new(Node::Binary(
                     Box::new(Node::Number(2_f64)),
-                    Box::new(Token::new(TokenKind::Times, "*".to_owned(), 3, 4)),
+                    Box::new(Token::new(TokenKind::Times, "*".to_owned(), 3, 4, 1, 4)),
                     Box::new(Node::Number(3_f64))
                 ))
             )
@@ -138,10 +138,10 @@ mod tests {
             Node::Binary(
                 Box::new(Node::Binary(
                     Box::new(Node::Number(1_f64)),
-                    Box::new(Token::new(TokenKind::Times, "*".to_owned(), 1, 2)),
+                    Box::new(Token::new(TokenKind::Times, "*".to_owned(), 1, 2, 1, 2)),
                     Box::new(Node::Number(2_f64))
                 )),
-                Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 3, 4)),
+                Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 3, 4, 1, 4)),
                 Box::new(Node::Number(3_f64)),
             )
         );
@@ -154,10 +154,10 @@ mod tests {
             ast,
             Node::Binary(
                 Box::new(Node::Number(1_f64)),
-                Box::new(Token::new(TokenKind::Times, "*".to_owned(), 1, 2)),
+                Box::new(Token::new(TokenKind::Times, "*".to_owned(), 1, 2, 1, 2)),
                 Box::new(Node::Binary(
                     Box::new(Node::Number(2_f64)),
-                    Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 4, 5)),
+                    Box::new(Token::new(TokenKind::Plus, "+".to_owned(), 4, 5, 1, 5)),
                     Box::new(Node::Number(3_f64)),
                 )),
             )
@@ -171,10 +171,10 @@ mod tests {
             ast,
             Node::Binary(
                 Box::new(Node::Number(1_f64)),
-                Box::new(Token::new(TokenKind::Exponent, "^".to_owned(), 1, 2)),
+                Box::new(Token::new(TokenKind::Exponent, "^".to_owned(), 1, 2, 1, 2)),
                 Box::new(Node::Binary(
                     Box::new(Node::Number(2_f64)),
-                    Box::new(Token::new(TokenKind::Exponent, "^".to_owned(), 3, 4)),
+                    Box::new(Token::new(TokenKind::Exponent, "^".to_owned(), 3, 4, 1, 4)),
                     Box::new(Node::Number(3_f64)),
                 )),
             )

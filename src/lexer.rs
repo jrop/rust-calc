@@ -17,14 +17,25 @@ pub struct Token {
     pub value: String,
     pub start: usize,
     pub end: usize,
+    pub line: usize,
+    pub column: usize,
 }
 impl Token {
-    pub fn new(kind: TokenKind, value: String, start: usize, end: usize) -> Token {
+    pub fn new(
+        kind: TokenKind,
+        value: String,
+        start: usize,
+        end: usize,
+        line: usize,
+        column: usize,
+    ) -> Token {
         Token {
             kind,
             value,
             start,
             end,
+            line,
+            column,
         }
     }
 }
@@ -33,6 +44,8 @@ pub struct Lexer<'a> {
     position: usize,
     peeked: Option<Box<Token>>,
     chars: std::iter::Peekable<std::iter::Enumerate<std::str::Chars<'a>>>,
+    current_line: usize,
+    current_column: usize,
 }
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a str) -> Lexer<'a> {
@@ -40,6 +53,8 @@ impl<'a> Lexer<'a> {
             position: 0,
             peeked: None,
             chars: source.chars().enumerate().peekable(),
+            current_line: 1,
+            current_column: 1,
         }
     }
 
@@ -54,6 +69,15 @@ impl<'a> Lexer<'a> {
         match self.chars.next() {
             Some((_, c)) => {
                 self.position += 1;
+                match c {
+                    '\n' => {
+                        self.current_line += 1;
+                        self.current_column = 1;
+                    }
+                    _ => {
+                        self.current_column += 1;
+                    }
+                }
                 Some(c)
             }
             None => None,
@@ -76,6 +100,14 @@ impl<'a> Lexer<'a> {
         Some(number)
     }
 
+    pub fn error(&self, tkn: &Token) -> String {
+        format!(
+            "Unexpected token {:?} ({}:{})",
+            tkn.kind, tkn.line, tkn.column
+        )
+        .to_owned()
+    }
+
     pub fn expect(&mut self, kind: TokenKind) -> Result<Box<Token>, String> {
         let tkn = self.next();
         match tkn {
@@ -83,7 +115,7 @@ impl<'a> Lexer<'a> {
                 if t.kind == kind {
                     Ok(t)
                 } else {
-                    Err(format!("Unexpected token: {:?}", t))
+                    Err(self.error(&t))
                 }
             }
             _ => Err("Unexpected EOF".to_owned()),
@@ -105,7 +137,10 @@ impl<'a> Lexer<'a> {
         }
 
         let start = self.position;
-        let token = match self.peek_char() {
+        let line = self.current_line;
+        let column = self.current_column;
+        let peeked_char = self.peek_char().map(|c| *c);
+        let token = match peeked_char {
             Some(c) => match c {
                 n if n.is_digit(10) => {
                     let mut number = self.eat_digits().unwrap();
@@ -117,7 +152,14 @@ impl<'a> Lexer<'a> {
                         }
                         _ => {}
                     }
-                    Some(Token::new(TokenKind::Number, number, start, self.position))
+                    Some(Token::new(
+                        TokenKind::Number,
+                        number,
+                        start,
+                        self.position,
+                        line,
+                        column,
+                    ))
                 }
                 '+' => {
                     self.next_char();
@@ -126,6 +168,8 @@ impl<'a> Lexer<'a> {
                         "+".to_owned(),
                         start,
                         self.position,
+                        line,
+                        column,
                     ))
                 }
                 '-' => {
@@ -135,6 +179,8 @@ impl<'a> Lexer<'a> {
                         "-".to_owned(),
                         start,
                         self.position,
+                        line,
+                        column,
                     ))
                 }
                 '*' => {
@@ -144,6 +190,8 @@ impl<'a> Lexer<'a> {
                         "*".to_owned(),
                         start,
                         self.position,
+                        line,
+                        column,
                     ))
                 }
                 '/' => {
@@ -153,6 +201,8 @@ impl<'a> Lexer<'a> {
                         "/".to_owned(),
                         start,
                         self.position,
+                        line,
+                        column,
                     ))
                 }
                 '^' => {
@@ -162,6 +212,8 @@ impl<'a> Lexer<'a> {
                         "^".to_owned(),
                         start,
                         self.position,
+                        line,
+                        column,
                     ))
                 }
                 '(' => {
@@ -171,6 +223,8 @@ impl<'a> Lexer<'a> {
                         "(".to_owned(),
                         start,
                         self.position,
+                        line,
+                        column,
                     ))
                 }
                 ')' => {
@@ -180,6 +234,8 @@ impl<'a> Lexer<'a> {
                         ")".to_owned(),
                         start,
                         self.position,
+                        line,
+                        column,
                     ))
                 }
                 c if c.is_alphabetic() => {
@@ -190,9 +246,19 @@ impl<'a> Lexer<'a> {
                         }
                         id += self.next_char().unwrap().to_string().as_str();
                     }
-                    Some(Token::new(TokenKind::Identifier, id, start, self.position))
+                    Some(Token::new(
+                        TokenKind::Identifier,
+                        id,
+                        start,
+                        self.position,
+                        line,
+                        column,
+                    ))
                 }
-                _ => panic!("Unexpected input: {}", c),
+                _ => panic!(
+                    "Unexpected input: {} ({}:{})",
+                    c, self.current_line, self.current_column
+                ),
             },
             None => None,
         };
@@ -237,11 +303,11 @@ mod tests {
         assert_eq!(tkns.len(), 2);
         assert_eq!(
             *tkns[0],
-            Token::new(TokenKind::Number, "2".to_owned(), 0, 1)
+            Token::new(TokenKind::Number, "2".to_owned(), 0, 1, 1, 1)
         );
         assert_eq!(
             *tkns[1],
-            Token::new(TokenKind::Number, "3.14".to_owned(), 2, 6)
+            Token::new(TokenKind::Number, "3.14".to_owned(), 2, 6, 1, 3)
         );
     }
 
@@ -249,24 +315,33 @@ mod tests {
     fn operators() {
         let tkns = lex("+-*/^()");
         assert_eq!(tkns.len(), 7);
-        assert_eq!(*tkns[0], Token::new(TokenKind::Plus, "+".to_owned(), 0, 1));
-        assert_eq!(*tkns[1], Token::new(TokenKind::Minus, "-".to_owned(), 1, 2));
-        assert_eq!(*tkns[2], Token::new(TokenKind::Times, "*".to_owned(), 2, 3));
+        assert_eq!(
+            *tkns[0],
+            Token::new(TokenKind::Plus, "+".to_owned(), 0, 1, 1, 1)
+        );
+        assert_eq!(
+            *tkns[1],
+            Token::new(TokenKind::Minus, "-".to_owned(), 1, 2, 1, 2)
+        );
+        assert_eq!(
+            *tkns[2],
+            Token::new(TokenKind::Times, "*".to_owned(), 2, 3, 1, 3)
+        );
         assert_eq!(
             *tkns[3],
-            Token::new(TokenKind::Divide, "/".to_owned(), 3, 4)
+            Token::new(TokenKind::Divide, "/".to_owned(), 3, 4, 1, 4)
         );
         assert_eq!(
             *tkns[4],
-            Token::new(TokenKind::Exponent, "^".to_owned(), 4, 5)
+            Token::new(TokenKind::Exponent, "^".to_owned(), 4, 5, 1, 5)
         );
         assert_eq!(
             *tkns[5],
-            Token::new(TokenKind::LParen, "(".to_owned(), 5, 6)
+            Token::new(TokenKind::LParen, "(".to_owned(), 5, 6, 1, 6)
         );
         assert_eq!(
             *tkns[6],
-            Token::new(TokenKind::RParen, ")".to_owned(), 6, 7)
+            Token::new(TokenKind::RParen, ")".to_owned(), 6, 7, 1, 7)
         );
     }
 
@@ -276,7 +351,7 @@ mod tests {
         assert_eq!(tkns.len(), 1);
         assert_eq!(
             *tkns[0],
-            Token::new(TokenKind::Identifier, "abc".to_owned(), 0, 3)
+            Token::new(TokenKind::Identifier, "abc".to_owned(), 0, 3, 1, 1)
         );
     }
 

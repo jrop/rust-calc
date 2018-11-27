@@ -58,7 +58,7 @@ mod tests {
         let num = Box::new(Node::Number(3.14_f64));
         assert_eq!(
             ast::eval(Node::Unary(
-                Box::new(Token::new(TokenKind::Minus, "-".to_owned(), 0, 0)),
+                Box::new(Token::new(TokenKind::Minus, "-".to_owned(), 0, 0, 0, 0)),
                 num
             )),
             -3.14_f64
@@ -69,7 +69,7 @@ mod tests {
     fn binary() {
         let _3 = Box::new(Node::Number(3_f64));
         let _4 = Box::new(Node::Number(4_f64));
-        let times = Box::new(Token::new(TokenKind::Times, "*".to_owned(), 0, 0));
+        let times = Box::new(Token::new(TokenKind::Times, "*".to_owned(), 0, 0, 0, 0));
         assert_eq!(ast::eval(Node::Binary(_3, times, _4)), 12_f64);
     }
 
