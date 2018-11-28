@@ -46,7 +46,7 @@ impl<'a> Parser<'a> {
           _ => Err("Expected ')'".to_owned()),
         }
       }
-      _ => Err(self.lexer.error(&t)),
+      _ => Err(t.error()),
     }
   }
 
@@ -60,7 +60,7 @@ impl<'a> Parser<'a> {
         let right = self.expr(bp - 1)?;
         Ok(Node::Binary(Box::new(left), op, Box::new(right)))
       }
-      _ => Err(self.lexer.error(&op)),
+      _ => Err(op.error()),
     }
   }
 
@@ -94,6 +94,14 @@ impl<'a> Parser<'a> {
       peeked = self.lexer.peek().as_ref();
     }
     Ok(left)
+  }
+
+  pub fn parse(&mut self) -> Result<Node, String> {
+    let result = self.expr(0);
+    match self.lexer.next() {
+      Some(tkn) => Err(tkn.error()),
+      None => result,
+    }
   }
 }
 

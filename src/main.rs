@@ -16,8 +16,8 @@ fn prompt_and_read_line() -> std::io::Result<String> {
 fn main() {
   while let Ok(line) = prompt_and_read_line() {
     let mut parser = parser::Parser::new(lexer::Lexer::new(&line));
-    match parser.expr(0) {
-      Ok(node) => println!("result={:?}", ast::eval(node).unwrap()),
+    match parser.parse().and_then(|node| ast::eval(node)) {
+      Ok(result) => println!("result={:?}", result),
       Err(reason) => println!("Error: {}", reason),
     }
   }

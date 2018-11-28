@@ -38,6 +38,14 @@ impl Token {
       column,
     }
   }
+
+  pub fn error(&self) -> String {
+    format!(
+      "Unexpected token \"{}\" ({:?}) ({}:{})",
+      self.value, self.kind, self.line, self.column
+    )
+    .to_owned()
+  }
 }
 
 pub struct Lexer<'a> {
@@ -100,14 +108,6 @@ impl<'a> Lexer<'a> {
     Some(number)
   }
 
-  pub fn error(&self, tkn: &Token) -> String {
-    format!(
-      "Unexpected token \"{}\" ({:?}) ({}:{})",
-      tkn.value, tkn.kind, tkn.line, tkn.column
-    )
-    .to_owned()
-  }
-
   pub fn expect(&mut self, kind: TokenKind) -> Result<Box<Token>, String> {
     let tkn = self.next();
     match tkn {
@@ -115,7 +115,7 @@ impl<'a> Lexer<'a> {
         if t.kind == kind {
           Ok(t)
         } else {
-          Err(self.error(&t))
+          Err(t.error())
         }
       }
       _ => Err("Unexpected EOF".to_owned()),
