@@ -1,24 +1,61 @@
 #![feature(nll)]
-use std::io::Write;
+
+extern crate clap;
+extern crate rustyline;
 
 mod ast;
 mod lexer;
 mod parser;
 
-fn prompt_and_read_line() -> std::io::Result<String> {
-  let mut line: String = String::new();
-  print!("> ");
-  std::io::stdout().flush()?;
-  std::io::stdin().read_line(&mut line)?;
-  Ok(line)
+fn eval(s: &str) -> Result<f64, String> {
+  let l = lexer::Lexer::new(s);
+  let mut p = parser::Parser::new(l);
+  let tree = p.parse()?;
+  ast::eval(tree)
 }
 
 fn main() {
-  while let Ok(line) = prompt_and_read_line() {
-    let mut parser = parser::Parser::new(lexer::Lexer::new(&line));
-    match parser.parse().and_then(|node| ast::eval(node)) {
-      Ok(result) => println!("result={:?}", result),
-      Err(reason) => println!("Error: {}", reason),
+  let matches = clap::App::new("rust-calc")
+    .version(clap::crate_version!())
+    .author(clap::crate_authors!())
+    .about("A simple calculator, written in Rust.")
+    .arg(
+      clap::Arg::with_name("expr")
+        .short("e")
+        .long("expression")
+        .help("An expression to evaluate")
+        .takes_value(true),
+    )
+    .get_matches();
+
+  match matches.value_of("expr") {
+    Some(expr) => match eval(expr) {
+      // print result and exit:
+      Ok(x) => println!("{}", x),
+      Err(msg) => eprintln!("error: {}", msg),
+    },
+    None => {
+      // fire up REPL:
+      let mut rl = rustyline::Editor::<()>::new();
+      loop {
+        let readline = rl.readline(">> ");
+        match readline {
+          Ok(line) => match eval(line.as_str()) {
+            Ok(x) => println!("result={}", x),
+            Err(msg) => eprintln!("{}", msg),
+          },
+          Err(rustyline::error::ReadlineError::Interrupted) => {
+            break;
+          }
+          Err(rustyline::error::ReadlineError::Eof) => {
+            break;
+          }
+          Err(err) => {
+            println!("error: {:?}", err);
+            break;
+          }
+        }
+      }
     }
   }
 }
