@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 extern crate clap;
 extern crate rustyline;
 

@@ -139,7 +139,7 @@ impl<'a> Lexer<'a> {
     let start = self.position;
     let line = self.current_line;
     let column = self.current_column;
-    let peeked_char = self.peek_char().map(|c| *c);
+    let peeked_char = self.peek_char().cloned();
     let token = match peeked_char {
       Some(c) => match c {
         n if n.is_digit(10) => {
@@ -287,7 +287,7 @@ impl<'a> Iterator for Lexer<'a> {
 
 #[cfg(test)]
 mod tests {
-  use lexer::{Lexer, Token, TokenKind};
+  use crate::lexer::{Lexer, Token, TokenKind};
 
   fn lex(s: &str) -> Vec<Box<Token>> {
     let mut tkns: Vec<Box<Token>> = vec![];
