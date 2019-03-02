@@ -1,4 +1,4 @@
-use lexer::{Token, TokenKind};
+use crate::lexer::{Token, TokenKind};
 
 #[derive(Debug, PartialEq)]
 pub enum Node {
@@ -44,9 +44,9 @@ pub fn eval(node: Node) -> Result<f64, String> {
 
 #[cfg(test)]
 mod tests {
-  use ast;
-  use ast::Node;
-  use lexer::{Token, TokenKind};
+  use crate::ast;
+  use crate::ast::Node;
+  use crate::lexer::{Token, TokenKind};
 
   #[test]
   fn number() {

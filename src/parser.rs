@@ -1,5 +1,5 @@
-use ast::Node;
-use lexer::{Lexer, Token, TokenKind};
+use crate::ast::Node;
+use crate::lexer::{Lexer, Token, TokenKind};
 
 pub struct Parser<'a> {
   lexer: Lexer<'a>,
@@ -79,8 +79,8 @@ impl<'a> Parser<'a> {
       if peeked.is_none() {
         break;
       }
-      let peeked_copy = (**peeked.unwrap()).clone();
-      if rbp >= self.bp(&peeked_copy) {
+      let peeked_copy = &peeked.unwrap().clone();
+      if rbp >= self.bp(peeked_copy) {
         break;
       }
 
@@ -107,9 +107,9 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-  use ast::{eval, Node};
-  use lexer::{Lexer, Token, TokenKind};
-  use parser::Parser;
+  use crate::ast::{eval, Node};
+  use crate::lexer::{Lexer, Token, TokenKind};
+  use crate::parser::Parser;
 
   #[test]
   fn number() {

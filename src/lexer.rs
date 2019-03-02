@@ -287,7 +287,7 @@ impl<'a> Iterator for Lexer<'a> {
 
 #[cfg(test)]
 mod tests {
-  use lexer::{Lexer, Token, TokenKind};
+  use crate::lexer::{Lexer, Token, TokenKind};
 
   fn lex(s: &str) -> Vec<Box<Token>> {
     let mut tkns: Vec<Box<Token>> = vec![];
