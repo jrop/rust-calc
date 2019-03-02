@@ -139,7 +139,7 @@ impl<'a> Lexer<'a> {
     let start = self.position;
     let line = self.current_line;
     let column = self.current_column;
-    let peeked_char = self.peek_char().map(|c| *c);
+    let peeked_char = self.peek_char().cloned();
     let token = match peeked_char {
       Some(c) => match c {
         n if n.is_digit(10) => {
