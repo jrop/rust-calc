@@ -271,6 +271,13 @@ impl<'a> Lexer<'a> {
     };
     &self.peeked
   }
+
+  pub fn peek_owned(&mut self) -> Option<Token> {
+    match self.peek() {
+      Some(t) => Some(*t.clone()),
+      None => None,
+    }
+  }
 }
 
 impl<'a> Iterator for Lexer<'a> {

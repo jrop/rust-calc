@@ -74,16 +74,8 @@ impl<'a> Parser<'a> {
       return Ok(left);
     }
 
-    let mut peeked = self.lexer.peek().as_ref();
-    loop {
-      if peeked.is_none() {
-        break;
-      }
-      let peeked_copy = &peeked.unwrap().clone();
-      if rbp >= self.bp(peeked_copy) {
-        break;
-      }
-
+    let mut peeked = self.lexer.peek_owned();
+    while peeked.is_some() && rbp < self.bp(&peeked.unwrap()) {
       let op = self.lexer.next().ok_or(err)?;
       let op_bp = self.bp(&op);
       left = self.led(left, op, op_bp)?;
@@ -91,7 +83,7 @@ impl<'a> Parser<'a> {
       if self.lexer.peek().is_none() {
         break;
       }
-      peeked = self.lexer.peek().as_ref();
+      peeked = self.lexer.peek_owned();
     }
     Ok(left)
   }
