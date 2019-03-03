@@ -18,11 +18,11 @@ When run, a REPL is started that parses math expressions and computes the result
 
 ```sh
 $ rust-calc
-> 1 + 2 * 3
+>> 1 + 2 * 3
 result=3.0
-> (1+2)*3
+>> (1+2)*3
 result=9.0
-> 1^2^3
+>> 1^2^3
 result=1.0
 > sin(pi / 6)
 result=0.5

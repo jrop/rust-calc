@@ -1,8 +1,3 @@
-#![feature(nll)]
-
-extern crate clap;
-extern crate rustyline;
-
 mod ast;
 mod lexer;
 mod parser;
