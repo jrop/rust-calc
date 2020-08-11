@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 clap = "2.32.0"
-rustyline = "2.1.0"
+rustyline = "6.2.0"
 
 [profile.release]
 lto = true
